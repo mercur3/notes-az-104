@@ -1,0 +1,12 @@
+* Notes for AZ-104
+** Sources
+- [[https://learn.microsoft.com/en-us/credentials/certifications/azure-administrator/?practice-assessment-type=certification][Home Page]]
+- [[https://github.com/MicrosoftLearning/AZ-104-MicrosoftAzureAdministrator?tab=readme-ov-file][Labs]]
+
+** Renewal frequency
+1 year
+
+** Exam
+- Time: 1h 40min
+- Price: 83$
+
