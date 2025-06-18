@@ -1,0 +1,129 @@
+* Prerequisites
+** Manage services with Azure portal
+*** Azure managment options
+- Azure portal: web UI
+- Bash, Powershell: CLI
+- Azure Cloud Shell: web-based CLI
+- Azure mobile app: monitoring and managing resources from a mobile device
+
+*** Azure portal
+- Less useful for repetive tasks
+
+*** Azure mobile app
+- Android, iOS
+- Check the status and metrics for the services
+- Notifications and alerts for health issues
+- Start, stop, restart vm/web apps
+- Connect to vm
+- Manage permissions and RBAC
+- Use Azure Cloud Shell
+
+*** Preview features
+[[https://preview.portal.azure.com/][https://preview.portal.azure.com/]]
+
+** Introduction to Azure Cloud Shell
+*** What is Azure Cloud Shell
+- Managed by Microsoft
+- The latest version of Azure CLI and Azure Powershell modules
+- Persistent cloud storage of SSH keys, scripts, etc.
+- Text editor
+
+*** Access Azure Cloud Shell
+- Link: [[https://shell.azure.com/][https://shell.azure.com/]]
+- Azure portal
+- From code snippet in Microsoft Learn
+
+*** Pre-installed tools
+- Linux shells
+- Azure tools: AzCopy, Azure Function CLI, etc.
+- Text editors
+- Git
+- Build tools: npm, maven, pip, make
+- Containers: kubectl, helm, docker machine
+- DB client: MySQL, Postgres, SQL Server
+- Automation: ansible, terraform, etc.
+
+*** When not to use Azure Cloud Shell
+- Sessions longer than 20min or it will disconnect
+- Managing permissions
+- Installing extra tools
+- Storing/syncronizing data accross regions, because Cloud Shell is single-region
+- Using multiple sessions
+
+** Introduction to Bash
+- Use Arch btw
+- LOL
+- Skill issue
+
+** Introduction to Powershell
+** Deploy Azure infrastructure by usin JSON ARM templates
+*** What are ARM templates
+- IaC
+
+*** Benefits of ARM
+[[https://learn.microsoft.com/en-us/training/modules/create-azure-resource-manager-template-vs-code/media/2-template-processing.png][Azure Resource Manager]]
+
+- JSON files that define infrastructe and configurations - Declarative syntax 
+  templates
+- Idempotent
+- Automate deployment
+- Can be version-controlled
+- Resource manager orchestrates the deployment and ensures that resources are created in the correct
+  order
+- Some operations can run in parallel
+- Resource manager validates the template before running it
+- Can be split into smaller files
+- Can be included into CI/CD
+
+*** File structure
+| Element        | Description                                              | Required |
+|----------------+----------------------------------------------------------+----------|
+| schema         | version number of the deployment                         | Yes      |
+| contentVersion | version number of the template                           | Yes      |
+| apiProfile     | API versions for resources                               |          |
+| parameters     | Can be provided in file, command line args, Azure portal |          |
+| variables      |                                                          |          |
+| functions      | User defined                                             |          |
+| output         |                                                          |          |
+
+*** Deployment
+- Local template
+- Linked template
+- In CI/CD pipeline
+
+To deploy a local template:
+1. =az login=
+2. =az group create --name THE_NAME --lacaction THE_LOCATION=
+3. =az deployment group create --name THE_NAME --resource-group THE_GROUP --template-file THE_FILE=
+
+*** Add resources to the template
+- Syntax: =resouce-provider/resource-type=, e.g. =Microsoft.Storage/storageAccounts=
+- [[https://learn.microsoft.com/en-us/training/modules/create-azure-resource-manager-template-vs-code/media/2-storage-account-properties.png][Storage account properties]]
+
+#+BEGIN_SRC json
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.1",
+  "apiProfile": "",
+  "parameters": {},
+  "variables": {},
+  "functions": [],
+  "resources": [
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2023-05-01",
+      "name": "learntemplatestorage123",
+      "location": "westus",
+      "sku": {
+        "name": "Standard_LRS"
+      },
+      "kind": "StorageV2",
+      "properties": {
+        "supportsHttpsTrafficOnly": true
+      }
+    }
+  ],
+  "outputs": {}
+}
+#+END_SRC
+
