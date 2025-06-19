@@ -1,0 +1,469 @@
+* Manage identities and governance
+** Understanding Microsoft Entra ID
+*** Examine Microsoft Entra ID
+[[https://learn.microsoft.com/en-us/training/wwl-azure/understand-azure-active-directory/media/azure-active-directory-connect-stack-f1aae359.png][Architecture]]
+
+- PaaS
+- Features not available in Active Directory Domain Service
+  - Multi-factor authentication
+  - Identity protection
+  - Self-service password reset
+- Included as free tier in a new Azure subscription, Microsoft 365, Microsoft Intune
+
+*** Microsoft Entra tenants
+- AD DS is single tenant
+- Entra ID is multi tenant
+- Tenant:
+  - A company/organization that signs up for a cloud Microsoft subscription
+  - An individual Microsoft Entra instance
+- Entra tenant - Azure subscription ===> ~1:n~
+- Each tenant is assigned to the default DNS with a unique prefix: =prefix.onmicrosoft.com=
+
+*** Microsoft Entra schema
+- Less objects than AD DS
+- No computer class:
+  - Can't be used to manage computers with classic tools such as Group Policy Objects (GPO)
+- No organization unit class:
+  - No support for hierarchy of objects
+- An object in the =Application= class contains an application definition
+- An object in the =servicePrincipal= class constitutes its instance in the current Microsoft Entra
+  tenant
+- An =Application= defined in one tenant can be used accross different tenants by creating a new
+  =servicePrincipal= in each tenant
+
+*** Characteristics of AD DS
+- Used in physical Windows Active Directory
+- True directory service with a hierarchical X.500 structure
+- Uses DNS to locate domain controllers
+- Can be queried via LDAP
+- Uses Kerberos for authentication
+- Uses OU and GPO for managment
+- Includes computer objects
+- Uses trust between domains for delegating managment
+- Deploying AD DS in Azure virtual machine does not make use of Microsoft Entra ID
+- It requires one more extra disk, because you can't use drive C
+
+*** Characteristics of Microsoft Entra ID
+- Identity solution for internet based HTTP applications
+- Multi-tenant directory service
+- Flat structure, no OU or GPO
+- Can't query over LDAP, but you need to use HTTP REST API
+- Can't use Kerberos, but you can use: SAML, WS-Federation, OpenID Connect for authentication and
+  OAuth for authorization
+- Includes federation services (e.g. Facebook)
+
+*** Compare Microsoft Entra ID P1 and P2 plans
+- P1 edition:
+  - *Self-service group managment*: users can create and manage groups and they can make requests to
+    join other groups
+  - *Advanced security reports and alerts*: Detailed logs and machine learning advanced reports
+  - *MFA*: It works with non-browser off-the-shelf apps (Outlook)
+  - *Microsoft Identity Manager (MIM)*: can bridge multiple on-premise authentication stores like AD
+    DS, LDAP, Oracle, etc.
+  - *Enterprise SLA = 99.9%*: same level as the free tier
+  - *Password reset with writeback*: self-service password reset follows the same policy as AD
+  - *Cloud App Discovery*: discovers cloud apps
+  - *Conditional Access based on device, group, location*
+  - *Microsoft Entra Connect Health*: alerts, performance counters, usage patterns, configuration
+    settings
+- P2 edition:
+  - All the features from P1
+  - *Microsoft Entra ID Protection*: can define risk policies and flag users for risk
+  - *Microsoft Entra Privileged Identity Managment*: privileged users and administrators
+
+*** Examine Microsoft Entra ID services
+[[https://learn.microsoft.com/en-us/training/wwl-azure/understand-azure-active-directory/media/azure-active-directory-virtual-network-340081c4.png][Microsoft Entra Domain Service architecture]]
+
+- To move on-premise apps (one of the following):
+  - Deploy site-to-site VPN to Azure IaaS: authentication traffic will cross over VPN
+  - Deploy replica domain controllers from local AD DS to Azure vms: authentication traffic will
+    cross over VPN and stays in cloud
+- Microsoft Entra Domain Services
+  - Runs in P1 and P2
+  - Provides Group Policy managment, domain joining, Kerberos authentication
+  - No domain controllers need to be deployed
+  - Can be used as a cloud only service (no deployment of AD DS needed)
+  - Admins do not need to manage, update, monitor domain controllers
+  - Admins do not need to manage, deploy AD replication
+  - No Domain Admin or Enterprise Admin group or domain
+  - Limitations:
+    - Only the base computer AD object is supported
+    - Cannot extend the schema
+    - OU structure is flat
+    - GPO is supported only for computer and user accounts
+  - Used for migrating applications that use Kerberos, NTLM, LDAP authentication to cloud or SQL
+    Server and Sharepoint Server
+- Microsoft Entra ID can integrate with AD DS via Microsoft Entra Connect
+
+** Create, configure and manage identites
+*** Examine RBAC and user roles in Microsoft Entra ID
+- Roles: global, billing, service, user and password admin
+- By default the account admin of the subscription is assigned as global admin
+- The free tier: can assign users and groups
+- PD1: dynamic group membership based on user attributes
+- PD2: self-service group managment, where users can create new groups and Privileged Identity
+  Managment allows users to elevate their privileges temporarily
+- Web portal: [[https://myapps.microsoft.com/]]
+
+*** Azure delegation model and RBAC
+- 3 built-in roles: owner, contributor, reader
+
+*** User roles in Microsoft Entra ID
+- 3 account types in Microsoft Entra ID:
+  - Organization account, created by tenant admin or co-admin e.g. =user@domain1.onmicrosoft.com=
+  - An account that references an organization account you created in another instance e.g.
+    =user@domain2.onmicrosoft.com=
+  - An account that references a Microsoft account e.g. =user@outlook.com=
+- You can manage Microsoft Entra ID only if you are global admin.
+- Tenant admin and co-admin are granted by default global admin role in that instance
+- Roles:
+  - Global admin: can assign roles to other accounts
+  - Limited admin: password, service, billing, Exchange, Skype, Sharepoint, etc.
+  - User
+
+*** Create and manage users in Microsoft Entra ID
+- 2 types of accounts:
+  - *Member users*: managed by Microsoft Entra tenant
+  - *Guest users*: from another tenant or a Microsoft account
+- 2 ways to create users:
+  - *Cloud entities via Microsoft Entra ID*: the quickest and the most straightforward method
+  - *Directory synchronized entities via an on-premise directory service synchronized to Microsoft
+    Entra ID*
+- To create a user:
+  1. Login to Azure portal -> left pane -> Microsoft Entra ID
+  2. Users and groups -> All users
+  3. New user
+  4. Enter the information
+  5. Create (a temporary password is assigned)
+
+*** Create and manage groups in Microsoft Entra ID
+- 2 groups:
+  - *Security*: manages resource access
+  - *Microsoft 365*: facilitates access managment for Microsoft 365 services
+- To create new groups:
+  1. Microsoft Entra ID
+  2. Groups
+  3. New group
+
+*** Assign membership
+- Assigned membership: users are added manually to a group
+- Dynamic membership: users are assigned based on a query of Microsoft Entra objects
+  - Microsoft 365 groups are user-based
+  - Microsoft Intune groups are device-based
+
+*** Manage Microsoft Entra objects with Microsoft Graph Powershell
+- Requirements:
+  - >= Windows 10
+  - >= Powershell 5.1 or Powershell Core
+  - Microsoft Graph Powershell SDK: =Install-Module -Name Microsoft.Graph -scope CurrentUser=
+
+*** Connecting to Microsoft Entra with Graph Powershell
+#+begin_src powershell
+Connect-MgGraph -Scopes "User.Read.All", "Group.ReadWrite.All", "Device.ReadWrite.All"
+#+end_src
+
+*** Create users
+#+begin_src powershell
+$users = Import-Csv -Path "C:\path\to\your\Users.csv"
+
+foreach ($user in $users) {
+    New-MgUser -UserPrincipalName $user.UserName `
+               -GivenName $user.FirstName `
+               -Surname $user.LastName `
+               -DisplayName $user.DisplayName `
+               -JobTitle $user.JobTitle `
+               -Department $user.Department `
+               -AccountEnabled $true `
+               -MailNickname $user.FirstName `
+               -UsageLocation "US" `
+               -PasswordProfile @{ForceChangePasswordNextSignIn = $true; Password = "Password"}
+}
+#+end_src
+
+*** Synchronize objects from AD DS to Microsoft Entra ID
+- Free tier: one way synchronization (AD DS -> Entra ID)
+- P1, P2: some features like password synchronization Entra ID -> AD DS
+
+*** Microsoft Entra Connect
+- Directory synchronization AD DS -> Entra ID
+- By default, it synchronizes all users and groups
+- Can be limited to only: OU, domain, user attributes, applications
+- Authentication:
+  - *Separate cloud password*: cloud-based user has a new password
+  - *Synchronized password*: not seamless SSO, because the user will be prompted to authenticate to
+    the cloud services
+  - *Pass-through authentication*: true SSO, because Entra ID uses cloud to verify user validity and
+    then passes the authentication to Entra Connect
+  - *Federated identities*: like pass-through authentication, but the information is passed to AD FS
+- Installation:
+  - Need to log in as admin in the device where it will be installed
+  - Must be in global admin group
+  - The device needs to communicate with Entra ID
+  - The device must be a domain member
+  - Settings:
+    - Express:
+      - SQL Server is installed and configured
+      - All identities and attributes are synchronized
+      - Password synchronization and automatic updates are enabled
+    - Custom:
+      - Pass-through authentication
+      - Federation with AD FS
+      - Filtering OUs and domains
+      - Password, group or device writeback
+      - Users, groups are synchronized, but no licencse (e.g. Microsoft 365) is assigned
+      - When an object is deleted from AD, it is also deleted from Entra ID
+  - When users are disabled, the licenses aren't unassigned
+
+** Describe the core architectural components of Azure
+*** Physical infracture
+- Datacenters are grouped in Azure Regions/Azure Availability Zones
+
+*** Regions
+- A geographical are that contains >= 1 datacenter that are nearby and networked with a low-latency
+  network
+- Some services are available only on specific regions
+
+*** Availability Zones
+- Individual datacenters within a region
+- Each AZ is made up of datacenters equipped with independent power, cooling, network
+- They are connected with private high-speed fibre optic network
+- >= 3 AZ per region
+- Not all regions support AZs
+
+*** The usage of AZs
+- Transfering data between AZs may cost
+- 3 types of services:
+  - *Zonal services*: the resource is pinned to a specific AZ
+  - *Zone-reduntant services*: the resource is replicated automatically accross AZs
+  - *Non-regional services*: services are available accross geographies and are resilient to zone or
+    region-wide outages
+
+*** Region pairs
+[[https://learn.microsoft.com/en-us/training/wwl-azure/describe-core-architectural-components-of-azure/media/region-pairs-7c495a33-85c0fa20.png][Azure infrastructure]]
+
+- Most regions are paired with another region in the same geography (usually ~300 miles away)
+- If there is an outage in a specific region, some services will fail-over to the region pair
+
+*** Additional advantages of region pairs
+- In a large Azure outage, one region out of each pair is prioritized so that the services are
+  operational
+- Planned Azure updates are rolled out one at a time to minimize downtime risk
+- Data resides in the same geography
+
+*** Sovereign regions
+- US gov
+- China
+
+*** Resources and resource groups
+[[https://learn.microsoft.com/en-us/training/wwl-azure/describe-core-architectural-components-of-azure/media/resource-group-eb2d7177-ff67d816.png][Resource group]]
+
+- A resouce must be placed in only one RG
+- RGs cannot be nested
+- An action in a RG gets cascaded into resouces e.g. deleting, adding/removing access
+
+*** Azure subsctiptions
+- A unit of managment, billing and scale
+- A subsctiption is linked to an Azure account which is an identity in Entra ID
+- An account can have >= 1 subsctiptions
+- 2 types of subsctiption boundaries:
+  - *Billing boundary*: Azure generates separate billing reports for each subsctiption
+  - *Access control boundary*: Azure creates applies access-control policies in subsctiption level
+
+*** Azure managment groups
+[[https://learn.microsoft.com/en-us/training/wwl-azure/describe-core-architectural-components-of-azure/media/management-groups-subscriptions-dfd5a108-60f31f5a.png][Managment hierarchy]]
+
+- Managment group > Subscription > RG > Resource
+- All subsctiptions in a managment group inherit the conditions applied on the level above
+- Usage:
+  - *Create a hierarchy that applies a policy*
+  - *Provide user access to multiple subsctiptions*
+- Max number = 10.000/directory
+- Max depth = 6 (root and subsctiption not included)
+- Each subsctiption/managment group can have only 1 parent
+
+** Azure Policy initiatives
+*** Introduction
+- Azure Policy is a service that allows you to create, assign, manage governance policies that
+  enforce rules and effects over Azure resources to ensure that they are compliant with your IT
+  standarts
+- Are defined in JSON files as policy definitions
+- Azure Policy initiative is a collection of policies
+
+*** Cloud Adoption Framework
+[[https://learn.microsoft.com/en-us/training/modules/sovereignty-policy-initiatives/media/microsoft-caf-for-azure.png#lightbox][Microsoft Cloud Adoption Framework for Azure]]
+
+- Best practices, docs and tools
+- Cloud governance: the management of cloud usage in your organization
+
+*** Steps for cloud governance
+[[https://learn.microsoft.com/en-us/training/modules/sovereignty-policy-initiatives/media/steps-for-cloud-governance.svg#lightbox][Diagram]]
+
+*** Considerations for defining a cloud governance policy
+[[https://learn.microsoft.com/en-us/training/modules/sovereignty-policy-initiatives/media/cloud-governance.png#lightbox][Diagram]]
+
+*** Cloud governance with Azure Policy
+- Azure Policy facilitates the governance of all existing and future resources
+- Enforces organizational standards and assesses compliance
+- Centralized managment
+- Prevents misconfigs
+- Evaluates and highlights noncompliant resources
+- Prevents creating noncompliant resources
+- In some cases, it can apply autofix
+
+*** Hierarchy of governance
+- Levels:
+  - Resource
+  - RG
+  - Subscription
+  - Managment group
+- Lower levels inherit settings from the levels above
+
+*** Azure Resource Manager
+- 2 types of operations:
+  - *Control plane* [[https://learn.microsoft.com/en-us/training/modules/sovereignty-policy-initiatives/media/azure-policy-and-resource-manager.png#lightbox][Azure Policy]]
+    - Azure Policy enforces rules and compliance to each resource
+    - ARM manages deployments, RBAC, auditing, monitoring, tagging, etc.
+    - Different frontends
+  - *Data plane*
+    - Direct interaction with the data stored in a resource
+    - Requests are made directly to the service, not to ARM
+    - Azure policy integration:
+      - *Microsoft.Kubernetes.Data*: managing Kubernetes clusters and components
+      - *Microsoft.KeyVault.Data*: managing vaults and certificates in Azure Key Vault
+      - *Microsoft.Network.Data*: managing Microsoft Azure Virtual Network Manager custom membership
+        policies
+      - *Microsoft.ManagedHSM.Data*: managing Azure Key Vault Managed HSM keys
+      - *Microsoft.DataFactory.Data*: using Azure Policy to deny Microsoft Azure Data Factory outbound
+        traffic domain names
+      - *Microsoft.MachineLearningServices.v2.Data*: managing Microsoft Azure Machine Learning model
+        deployments
+
+*** Operation flow in ARM
+[[https://learn.microsoft.com/en-us/training/modules/sovereignty-policy-initiatives/media/operation-flows.png#lightbox][Diagram]]
+
+- 2 types:
+  - *Greenfield*:
+    - policy-first (policy exists)
+    - The request gets validated by Azure Policy and then executed
+  - *Brownfield*:
+    - resource-first (resource exists)
+    - Policy evaluation happens during a scan every 24h or when triggered manually
+    - If it fails, the resouce is marked as noncompliant
+
+*** Azure Policy resources
+[[https://learn.microsoft.com/en-us/training/modules/sovereignty-policy-initiatives/media/policy-resources.png#lightbox][6 types]]
+
+- *Definitions*
+  - Compliance conditions
+  - Scope: each level of hierarchy
+- *Initiatives*
+  - A group of definitions
+  - Instead of applying policies individually you apply the whole collection
+  - Can be build-in together with the definitions
+- *Assignments*
+  - Defines which resources are evaluated
+- *Exemptions*
+  - Work on the resouce hierarchy or on resource level
+  - Are created after policy assignment
+  - 2 types:
+    - *Mitigated*: the policy is ment to be applied by a different method
+    - *Waiver*: the noncompliant state is temporarily acceptable
+- *Attestation*
+  - Each resource requires 1 attestation for each manually assigned policy
+- *Remediations*
+  - Makes the resource compliant
+  - Works automatically with /modify/ and /deployIfNotExists/
+
+*** Definitions
+Too long, see [[https://learn.microsoft.com/en-us/training/modules/sovereignty-policy-initiatives/azure-policy-definitions][this]]
+
+*** Evaluation of policies
+Too long, see [[https://learn.microsoft.com/en-us/training/modules/sovereignty-policy-initiatives/azure-policies-evaluation-resources][this]]
+
+** Secure Azure resources with Azure RBAC
+*** What is Azure RBAC
+[[https://learn.microsoft.com/en-us/training/modules/secure-azure-resources-with-rbac/media/2-azuread-and-azure-roles.png][Roles]]
+
+- Authorization system built on ARM that provides fine-grained access managment for Azure resources
+- Microsoft Entra ID + RBAC:
+  - When people leave the organization, they lose access to the cloud
+  - Balancing between autonomy and governance
+- A role assignment cascades top -> bottom
+
+*** How does RBAC works
+1. *Security principal (who)*
+   - A user, group or app that has been granted access
+2. *Role definition (what)*
+   - A collection of permissions of what can be performed
+   - Built-in roles:
+     - *Owner*: full access to a resource (can deletegate roles)
+     - *Contributor*: can modify the resource, but cannot grant roles
+     - *Reader*
+     - *User access admin*: manages acces to the resource
+3. *Scope (where)*
+   - [[https://learn.microsoft.com/en-us/training/modules/secure-azure-resources-with-rbac/media/2-rbac-scope.png][Level]]
+
+*** Role assignment
+[[https://learn.microsoft.com/en-us/training/modules/secure-azure-resources-with-rbac/media/2-rbac-overview.png][Assignment]]
+
+- Binding a role to a security principal in a scope in order to grant access
+
+*** Azure RBAC is an allow model
+- When you are assigned a role, Azure RBAC allows you to perform actions
+- =NotActions= permission: a set actions not allowed
+- Effective permissions = =Actions= - =NotActions=
+
+*** (Exercise) List and grant access + View activity logs
+
+** Allow users to reset password with Microsoft Entra self-service password reset
+*** Why user SSPR
+- If a user forgets the password, he can reset from a web browser or Windows sign-in
+- SSPR reduces the load on admins
+
+*** How SSPR works
+1. *Localization*
+2. *Verification*: user enters username and validates a CAPTCHA
+3. *Authentication*: choose >= 2 from the table, so that the user can choose
+4. *Password reset*
+5. *Notification*
+
+| Method                  | How to register         | How to authenticate                          |
+|-------------------------+-------------------------+----------------------------------------------|
+| Mobile app notification | Microsoft authenticator | Azure sends a notification to the mobile app |
+| Mobile app code         | Authenticator app       | Enter code from the app                      |
+| Email                   | External email          | Azure send a code to the email               |
+| Mobile phone            | Phone number            | SMS or automated call                        |
+| Office phone            |                         |                                              |
+| Security question       |                         |                                              |
+
+*** Required number of methods
+- User can choose 1 or 2 methods from those enabled by the admin
+
+*** Recommendations
+- Enable >= 2 methods
+- Prefer mobile app
+- Mobile isn't recommended, because SMS attacks
+- The security question is the least recommended. Only use it in a combination with another method
+
+*** Accounts with admin role
+- A strong 2 method authentication policy
+- Security question is not available
+
+*** Configure notifications
+- 2 options:
+  - *Notify users on password reset*: ther user is notified on the primary and the secondary email
+  - *Notify all admins*
+
+*** License requirements
+- Any signed-in user can change password regardless of the license
+- If not signed-in, it is available in Entra ID P1, P2 and Microsoft 365
+- In a hybrid environment, AD + Entra ID, a password reset in cloud must be written back to the
+  on-premise directory (P1, P2 or Microsoft 365 required)
+
+*** SSPR deployment options
+- SSPR writeback can be deployed with Entra Connect or cloud sync
+- You can deploy each option side-by-side in different domains to target different users
+- Cloud sync provides higher availability, because it does not rely on Entra Connect
+
+*** Implement SSPR
+[[https://learn.microsoft.com/en-us/training/modules/allow-users-reset-their-password/3-implement-azure-ad-self-service-password-reset][Link]]
