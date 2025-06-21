@@ -1,0 +1,813 @@
+* Configure and manage virtual networks
+** Configure virtual networks
+*** Things to know about virtual networks
+[[https://learn.microsoft.com/en-us/training/wwl-azure/configure-virtual-networks/media/virtual-networks-c016972b.png][Virtual networks]]
+
+- An Azure virtual network is a logical isolation of a resource
+- They are used to provision and manage VPNs
+- Each virtual network has its own Classless Inter-Domain Routing (CIDR) block and can be linked to
+  other virtual networks and on-premise
+- You can control DNS settings for the virtual network and split it into subnets
+
+*** Things to consider when using virtual networks
+| Scenario                                   | Description                                            |
+|--------------------------------------------+--------------------------------------------------------|
+| Create a dedicated private cloud-only VNet |                                                        |
+| Extend the data center                     | Site-to-site VPN using IPSEC                           |
+| Hybrid cloud                               | Connect cloud resources with those deployed on-premise |
+
+*** Things to know about subnets
+[[https://learn.microsoft.com/en-us/training/wwl-azure/configure-virtual-networks/media/azure-subnets-a5c893d5.png][Subnets]]
+
+- Each subnet contains a range of IPs that fall into that subnet
+- The address range must be unique within the VNet
+- The ranges cannot overlap
+- The IP range must be specified by using CIDR notation
+
+*** Reserved addresses
+Example: =192.168.1.0/24=
+
+| Address                  | Reason              |
+|--------------------------+---------------------|
+| =192.168.1.0=              | The VNet address    |
+| =192.168.1.1=              | The default gateway |
+| =192.168.1.2=, =192.168.1.3= | Azure DNS           |
+| =192.168.1.255=            | Broadcast address   |
+
+*** Things to consider when using subnets
+- *Service requirements*
+  - A service might require its own subnet
+  - There needs to be enough unallocated range
+- *Network virtual appliances*
+  - Azure routes traffic between all the subnets in a VNet by default
+  - It can be disabled or can be configured so the traffic goes through a network virtual appliance
+- *Network security groups*
+  - Each subnet can have 0 or 1 network security groups
+- *Private links*
+  - Azure Private Links provides private connectivity from a VNet to a PaaS
+  - Eliminates data exposure to the internet
+
+*** Things to know about creating a VNet
+- You need to define the IP range
+- You an IP that is not in use
+  - The address space can be either in cloud or on-premise, but not both
+  - The address space cannot be changed
+- Define >= 1 subnets
+- Create the VNet
+
+*** Plan IP addressing
+[[https://learn.microsoft.com/en-us/training/wwl-azure/configure-virtual-networks/media/ip-addressing-54476e47.png][IP config]]
+
+- *Private IP*
+- *Public IP*
+
+*** Things to know about IP addresses
+- Can be assigned manually or dynamically
+- You can split manually and dynamically assigned IPs into different subnets
+- Static IPs do not change and are used for:
+  - DNS name resolution
+  - IP address-based security models
+  - TLS/SSL certificates
+  - Firewall rules
+  - Role-based VMs such as Domain Controllers and DNS
+
+*** Create public IP
+[[https://learn.microsoft.com/en-us/training/wwl-azure/configure-virtual-networks/media/create-public-ip-address-f07bd67d.png][Azure portal]]
+
+*** Things to consider when creating a public IP
+- *IP version*
+  - *IPv4*
+  - *IPv6*: the assignment must be dynamic for the basic SKU
+  - *Both*
+- *SKU*
+  - *Basic*
+  - *Standart*: the assignment must be manual
+  - Must be the same as the load balancer it is using
+- *Name*
+- *IP address assignment*
+  - *Dynamic*
+    - It is defined when used for the first time
+    - It can change if a VM is stopped/deallocated through assure, but stays the same if rebooted
+      from the OS
+    - When the IP address is removed, the dynamic address is released
+  - *Static*
+    - The address is assigned when the IP is created
+    - The address is released when the resource gets deleted
+    - If the address is not used, the assignment method can be changed
+    - The assignment cannot change if it is attached to a resource
+
+*** Associate public IPs
+[[https://learn.microsoft.com/en-us/training/modules/configure-virtual-networks/7-associate-public-ip-addresses][Link]]
+
+*** Allocate or assign private IP addresses
+[[https://learn.microsoft.com/en-us/training/modules/configure-virtual-networks/8-associate-private-ip-addresses][Link]]
+
+*** Exercise: create and configure VNets
+[[https://learn.microsoft.com/en-us/training/modules/configure-virtual-networks/9-simulation-create-networks][Link]]
+
+** Configure network security groups
+*** Implement network security groups
+- Networks secutity groups limit network traffic to a resource in a VNet
+
+*** Things to know about NSG
+- A NSG contains a list of rules that allow or deny inbound or outbound network traffic
+- Can be assigned to VNet or NIC
+- Can be assigned multiple times
+
+*** NSG and subnets
+- Protected screened subnet aka demilitarized zone (DMZ)
+- DMZ acts as a buffer between the resources and the internet
+- Network traffic is restricted
+- Each subnet can have 0 or 1 NSG
+
+*** NSG and NIC
+- 0 or 1 NSG for a NIC
+
+*** Things to know about security rules
+- Azure creates default security rules in a NSG for inbound and outbound traffic e.g.
+  =DenyAllInbound=, =AllowInterOutbound=
+- You can add more rules
+- The default rules cannot be removed or overridden
+
+| Setting           | Value                                                             |
+|-------------------+-------------------------------------------------------------------|
+| Source            | Any, IP address, Tag, NSG                                         |
+| Source port range |                                                                   |
+| Destination       | Any, IP address, Tag, NSG                                         |
+| Protocol          | TCP, UDP, Internet Control Message Protocol (ICMP), Any (default) |
+| Action            | Allow or Deny                                                     |
+| Priority          | A unique value [100, 4096] (lower number has higher priority)     |
+
+*** Inbound security rules
+[[https://learn.microsoft.com/en-us/training/wwl-azure/configure-network-security-groups/media/inbound-rules-a554314b.png][Default inbound rules]]
+
+- The default rules deny all inbound traffic except from the VNet or the load balancer
+
+*** Outbound security rules
+[[https://learn.microsoft.com/en-us/training/wwl-azure/configure-network-security-groups/media/outbound-rules-ff90d802.png][Default outbound rules]]
+
+- Only allow outbound traffic to the internet and the VNet
+
+*** Determine effective rules
+- *Inbound*: Azure processes the rules for subnet then for the NIC
+- *Outbound*: (reversed)
+- *Both*: Azure checks how to apply rules for intra-subnet traffic
+
+*** Things to consider when applying effective rules
+- *Consider allowing all traffic*
+- *Consider importance of allow rules*
+  - Firstly, define /allow/ rules for both subnet and NIC or the traffic is denied for any level
+    without an /allow/ rule
+- *Consider intra-subnet traffic*
+  - Network traffic between VMs in a subnet can be denied
+- *Consider rule priority*
+- [[https://learn.microsoft.com/en-us/training/wwl-azure/configure-network-security-groups/media/effective-security-rules-d93ab464.png][UI]]
+
+*** Create NSG rules
+[[https://learn.microsoft.com/en-us/training/modules/configure-network-security-groups/5-create-network-security-groups-rules][Link]]
+
+*** Implement application security groups
+[[https://learn.microsoft.com/en-us/training/modules/configure-network-security-groups/6-implement-asgs][Link]]
+
+- ASG: logical grouping of VMs based on the workload
+
+*** Exercise: implement virtual networking
+[[https://learn.microsoft.com/en-us/training/modules/configure-network-security-groups/7-simulation-create-network-groups][Link]]
+  
+** Host your domain on Azure DNS
+*** DNS record types
+- *A*
+  - Host record
+  - Maps domain name to the host IP
+- *CNAME*
+  - Canonical name
+  - An alias from one domain to another
+- *MX*
+  - Mail exchange record
+  - Maps a mail request to a mail server
+- *TXT*
+  - Text record
+  - Associate a text string to domain name
+  - Used to verify domain ownership
+- *Wildcards*
+- *CAA* (certificate of authority)
+- *NS* (name server)
+- *SOA* (state of authority)
+- *SPF* (sender policy framework)
+- *SRV* (server location)
+
+*** Record set
+- A record set allows for multiple resources to be defined in a single record
+- SOA and CNAME cannot have a record set
+
+#+begin_src 
+www.wideworldimports.com.     3600    IN    A    127.0.0.1
+www.wideworldimports.com.     3600    IN    A    127.0.0.2
+#+end_src
+
+*** What is Azure DNS
+- A SOA for domain names
+- Azure DNS cannot register domains, you need to buy it from a registrar
+- Does not support Domain Name System Security Extension
+
+*** Security features
+- RBAC
+- Activity logs
+- Resource locking
+
+*** Private domains
+- Private zones: name resolution for VMs within a VNet and between VNets without creating DNS
+  solutions
+- Can use your own domain name, rather than one provided by Azure
+- Benefits:
+  - Are part of Azure infrastructure, so there is no need for a DNS solution
+  - All DNS records are supported
+  - Host names for VMs are automatically maintained
+  - Split-horizon DNS allows for a domain to exist in both a private and public zone
+
+*** Alias record sets
+- *A*
+- *AAAA*
+- *CNAME*
+
+*** Configure Azure DNS
+[[https://learn.microsoft.com/en-us/training/modules/host-domain-azure-dns/3-configure-azure-dns-host-domain][Link]]
+
+*** Dynamically resolve resource name by using alias record
+- A and CNAME records do not connect directly to the load balancer
+
+*** Apex domain
+- /Apex domain/ or /zone apex/ or /root apex/ is domain's highest level e.g. =some-domain-name.xyz=
+- The symbol =@= usually represents the apex domain
+- There are 2 default apex domain records: NS and SOA
+- CNAME records that are needed for Azure Traffic Manager or Azure CDN are not supported at apex
+  level
+
+*** Alias record
+- Enables a zone apex to reference other resources from the DNS zone
+- Can route traffic through Azure Traffic Manager
+- An alias can point to:
+  - Taffic Manager profile
+  - Azure CDN
+  - Public IP
+  - Front-door profile
+- Changes to a target resource are automatically applied to the DNS zone
+- Record types:
+  - *A*: IPv4
+  - *AAAA*: IPv6
+  - *CNAME*: the domain alias which links to *A*
+
+*** Uses for alias records
+- *Prevents dangling DNS records*
+  - Occurs when DNS is not up to date with IP changes
+  - Aliases allow for tight coupling between DNS and Azure resource
+- *Updates DNS records automatically when IP address changes*
+  - It creates a link to the resource rather than a direct IP connection
+- *Hosts load balancer at the apex zone*
+  - Routes traffic to Taffic Manager
+- *Points zone apex to Azure CDN*
+
+** Configure Azure Virtual Network peering
+*** Things to know about VNet peering
+[[https://learn.microsoft.com/en-us/training/wwl-azure/configure-vnet-peering/media/network-peering-5beae28a.png][VNet peering]]
+
+- 2 types of peering:
+  - *Regional*: connects VNets in the same region
+  - *Global*: connects VNets in different regions
+- Can be done accross different subscriptions or tenants
+
+*** Things to consider when using VNet peering
+| Benefit                    | Description                                                             |
+|----------------------------+-------------------------------------------------------------------------|
+| Private network connection | The traffic between VNets is private over Azure infrastructure (no VPN) |
+| Strong performance         | Low-latency, high-bandwidth                                             |
+| Simplified communication   | The resources in different VNets can communicate with each other        |
+| Seamless data transfer     | Transfer data accross subscriptions and regions                         |
+| No resource disruptions    | No downtime                                                             |
+
+*** Determine gateway transit and connectivity
+- When VNets are peered, you can configure Azure VPN Gateway in the peered VNet as a transit point
+
+*** Transit and connectivity use
+[[https://learn.microsoft.com/en-us/training/wwl-azure/configure-vnet-peering/media/gateway-transit-173a51a0.png][VNet hub]]
+
+- Azure portal does not mention /gateway transit/ and /connectivity/ [[https://learn.microsoft.com/en-us/training/wwl-azure/configure-vnet-peering/media/peering-settings.png][peering]]
+
+*** Things to know about Azure VPN Gateway
+- A VNet can have only 1 VPN
+- Gateway transit is supported for both regional and global peering
+- When you allow gateway transit, the VNet can communicate with resources outside the peering
+  - Use a site-to-site VPN to connect to on-premise
+  - Use a VNet-to-VNet connection to another VNet
+  - Use a point-to-site VPN to connect to a client
+- Gateway transit allows peered VNets to share the gateway and access other VNets or subnets
+  - No need to deploy a VPN in the peered VNet
+- You can deploy NSG to block or allow access
+
+*** Create VNet peering
+[[https://learn.microsoft.com/en-us/training/modules/configure-vnet-peering/4-create][Link]]
+
+*** Extend peering with user-defined routes and service chaining
+[[https://learn.microsoft.com/en-us/training/modules/configure-vnet-peering/5-determine-service-chaining-uses][Link]]
+
+*** Exercise: implement Intersite Connectivity
+[[https://learn.microsoft.com/en-us/training/modules/configure-vnet-peering/6-simulation-peering][Link]]
+
+** Manage and control traffic flow in deployment routes
+*** Azure routing
+- The default system routes in a subnet
+
+| Address prefix     | Next hope type |
+|--------------------+----------------|
+| Unique to the VNet | VNet           |
+| =0.0.0.0/0=        | Internet       |
+| =10.0.0.0/8=       | None           |
+| =172.16.0.0/12=    | None           |
+| =192.168.0.0/16=   | None           |
+| =100.64.0.0/10=    | None           |
+
+- Next hope type:
+  - *VNet*
+    - A route is created in the address prefix
+    - If multiple addresses are specified, multiple routes will be created
+  - *Internet*
+  - *None*
+    - Any traffic route is dropped and does not get routed outside the subnet
+- Other system routes:
+  - VNet peering
+  - Service chaining
+  - VNet gateway
+  - VNet service endpoint
+
+*** VNet peering and service chaining
+[[https://learn.microsoft.com/en-us/training/modules/control-network-traffic-flow-with-routes/media/2-virtual-network-peering-udrs.svg][User-defined routes through a NVA or VPN gateway]]
+
+- VNets are connected to each other
+- Same or cross region communication
+- More routes are created within the default route table
+- Service chaining can override these routes by creating user-defined routes
+
+*** VNet gateway
+[[https://learn.microsoft.com/en-us/training/modules/control-network-traffic-flow-with-routes/media/2-virtual-network-gateway.svg][VNet gateway]]
+
+- VNet gateway sends encrypted traffic between Azure and on-premise and between Azure networks
+- A VNet gateway contains routing tables and gateway services
+
+*** VNet service endpoint
+- Extends the private address space by providing a direct connection to the Azure resource
+- This connection restricts the traffic flow
+
+*** Custom routes
+- Are usually used to route the traffic through a NVA or firewall
+- 2 options
+  - Create a user-defined route
+  - Border Gateway Protocol (BGP)
+
+*** UDR
+- Overrides the default routes, so that the traffic gets routing through NVA or firewall
+- Next hop types:
+  - *Virtual appliance*
+    - A firewall device used to analyze or filter traffic entering or leaving a network
+    - Is configured by providing the private IP of a load balancer or of VM with port forwarding
+      enabled
+  - *VNet gateway*
+    - The gateway is a VPN for the next hop type
+  - *VNet*
+    - Overrides the default system route within the VNet
+  - *Internet*
+  - *None*
+    - Drops the traffic
+- Can't use *VirtualNetworkServiceEndpoint*, which indicates VNet peering
+
+*** Service tags for UDR
+- You can define a service tag instead of an IP for UDR
+- A service tag represents a group of IP prefixes from an Azure service
+- The IP addresses are automatically updated
+
+*** Border Gateway Protocol
+[[https://learn.microsoft.com/en-us/training/modules/control-network-traffic-flow-with-routes/media/2-bgp.svg][BGP]]
+
+- An on-premise network can communicate to Azure via BGP
+- Works over ExpressRoute and site-to-site VPN
+- Offers stability, because routers can quickly change connection if one goes down
+
+*** Route selection and priority
+- If multiple routes are available, Azure chooses the longest prefix
+  - Example: IP = =10.0.0.2= and 2 routes are available =10.0.0.0/16= and =10.0.0.0/24=, Azure will choose
+    =/24=, because it is more specific
+- When prefix is longer, the routing algorithm has less routes to check, therefore it is faster
+- You can't configure multiple UDR with the same prefix
+- If there are multiple routes with the same prefix, Azure applies this priority list:
+  1. UDR
+  2. BGP
+  3. System routes
+
+*** Exercise: create custom routes
+[[https://learn.microsoft.com/en-us/training/modules/control-network-traffic-flow-with-routes/3-exercise-create-custom-routes?source=learn][Link]]
+
+*** NVA
+[[https://learn.microsoft.com/en-us/training/modules/control-network-traffic-flow-with-routes/media/4-nva.svg][NVA]]
+
+- A virtual app that consists of layers like:
+  - A firewall
+  - A WAN optimizer
+  - Application-delivery controllers
+  - Routers
+  - Load balancers
+  - IDS/IPS
+  - Proxies
+- Providers in Azure Marketplace: Cisco, Barracuda, etc.
+- Can filter traffic, block malicious requests and requests from unexpected sources
+- NVA is a VM that controls network traffic flow
+- Usually they manage the traffic from a perimeter network to other networks or subnets
+- A firewall can be deployed in a perimeter subnet or by using microsegmentation
+- Microsegmentation:
+  - Create a dedicated subnet for the firewall and deploy the web apps in different subnets
+  - All traffic is routed through the NVA and then it is forwarded
+  - Works in L4 or L7
+- Some NVAs require multiple NICs
+- One NIC is dedicated to the network managment for the NVA
+- Additional NICs manage the network traffic
+
+*** UDR
+- When to create an UDR:
+  - Access the internet via on-premise network using forced tunneling
+  - Using NVA to control traffic
+- Route table relation subnet -> =1:n=
+
+*** NVA in a high-availability architecture
+- Can be a single point of failure
+
+*** Exercise: create an NVA and VMs
+[[https://learn.microsoft.com/en-us/training/modules/control-network-traffic-flow-with-routes/5-exercise-create-nva-vm][Link]]
+
+*** Exercise: route traffic through the NVA
+[[https://learn.microsoft.com/en-us/training/modules/control-network-traffic-flow-with-routes/6-exercise-route-traffic-through-nva][Link]]
+
+** Introduction to Azure Load Balancer
+*** What is Azure Load Balancer
+- Azure Load Balancer distributes network traffic between a cross a group of VMs or VM Scale Set
+- Delivers high availability and network performance:
+  - Load-balancing rules distribute the traffic accross the devices
+  - Health check ensures the devices are healthy and it does not distribute traffic to those
+    unhealthy instances
+- 2 types:
+  - *Public*
+    - Internet traffic to the VMs
+    - Maps the public IP and port of the incoming request to the private IP and the port of the
+      backend pool
+  - *Private*
+    - The IP is never exposed to the internet
+    - Provides access from within Azure of from on-premise
+    - Only the frontend private IP is exposed
+    - Forwards the request from the frontend web apps to the backend
+    - Supports the following features:
+      - *Within the VNet*: load balancing between 2 sets of VMs
+      - *Cross-premise VNet*: load balancing between 2 sets of on-premise VMs
+      - *Multi-tier apps*: load balancing from multi-tier web apps, where the backend is not
+        internet-facing
+      - *Line of Business apps*: load balancing for LOB apps in Azure without load balancing hardware
+        or software
+
+*** How Azure Load Balancer works
+- L4, TCP or UDP
+- Elements:
+  - Frontend IP
+  - Load balancing rules
+  - Backend pool
+  - Health probes
+  - Inbound NAT rules
+  - High availability ports
+  - Outbound rules
+
+*** Frontend IP
+[[https://learn.microsoft.com/en-us/training/modules/intro-to-azure-load-balancer/images/load-balancer-types.png][Types of load balancers]]
+
+- The address used by the client to connect to the app
+- 2 types:
+  - *Public IP*
+    - Public load balancer
+    - Maps the public IP of the incoming request to the private IP of the backend pool
+    - The load balancer maps the response from the private IP of the backend to the public IP of the
+      load balancer
+    - Then forwards it to the client
+  - *Private IP*
+    - Internal load balancer
+    - Distributes traffic between resources located in a VNet
+    - The frontend IP and VNet cannot be accessed from the internet
+    - The LOB apps can be accessed from Azure or from on-premise through a VPN gateway or
+      ExpressRoute
+
+*** Load Balancer rules
+[[https://learn.microsoft.com/en-us/training/modules/intro-to-azure-load-balancer/images/load-balancer-rules.png][Load Balancer rules]]
+
+- Defines how traffic is distributed to the backend pool
+- Traffic is managed through a 5 tuple hash from the followings:
+  - *Source IP*
+  - *Source port*
+  - *Destination IP*
+  - *Destination port*
+  - *Protocol type*: TCP/UDP
+  - *Session affinity*: ensures that the same node always handles the traffic for a client
+- A load balancer can have multiple IPs and ports
+- Each IP can have different rules
+- Only supported with IaaS load balancers
+- Cannot apply different rules for internal traffic, because it is L4
+- L7 load balancing is supported on Azure Application Gateway
+
+*** Backend pool
+- A group of VMs or a VM Scale Set that responds to the incoming requests
+- The load balancer automatically reconfigures itself when the pool scales up/down
+
+*** Health probes
+- Determines the health status of an instances
+- The threshold can be configured
+- The connection continues until:
+  - The app ends it flow
+  - Idle timeout
+  - The VM shutsdown
+- Probe types:
+  - *TCP custom probe*
+    - Tries to establish a TCP session
+  - *HTTP(S) custom probe*
+    - The load balancer regularly probes the endpoint
+    - The default is 15s
+    - Timeout at 31s
+    - A status other than HTTP 200 is unhealthy
+
+*** Session persistence
+- By default, it evenly distributes the traffic
+- It provides stickiness only within a transport session
+- 3 options:
+  - *None (default)*: stateless
+  - *Client IP (2 tuple)*: sticky session over the tuple (source IP, destination IP)
+  - *Client IP (3 tuple)*: sticky session over the tuple (source IP, destination IP, protocol type)
+
+*** High availability ports
+[[https://learn.microsoft.com/en-us/training/modules/intro-to-azure-load-balancer/images/high-availability-ports.png][HA load balancer]]
+
+- A load balancer configured with =protocol - all and port - 0= is called /high availability (HA) port
+  rule/
+- This rule enables a single rule to load balance all TCP and UDP traffic that arrives in an
+  standart internal load balancer
+- HA load balancing helps in the following scenarios:
+  - High availability
+  - Scale NVAs inside a VNet
+
+*** Inbound NAT rules
+[[https://learn.microsoft.com/en-us/training/modules/intro-to-azure-load-balancer/images/inbound-nat-rules.png][Accessing a resouce from outside of Azure]]
+
+- Load balancer rules can be combinet with NAT rules
+
+*** Outbound rules
+[[https://learn.microsoft.com/en-us/training/modules/intro-to-azure-load-balancer/images/outbound-rule.png][Backend can access the internet]]
+
+- An outbound rule configures Source Network Address Translation (SNAT) for all the VMs in the pool
+
+*** When to use a load balancer
+- App requires low-latency and high performance
+- Because it operates at L4, it can replicate on-premise devices
+- Public load balancer for internet facing apps
+- Private load balancer from web tier to data tier
+- Can configure NAT rules to allow RDP
+
+*** When not to user a load balancer
+- Single instance app
+- Low traffic
+- Other alternatives:
+  - *Azure Front Door*
+    - Application-delivery network that provides global load balancing and site acceleration
+    - L7 features like: TLS/SSL offloading, path-based routing, fast fail-over, web app firewall and caching
+    - Used to load balance an app accross different regions
+  - *Azure Traffic Manager*
+    - DNS based load balancer that distributes traffic accross different regions while providing high availability
+    - Load balances only at the domain level
+    - Can't fail-over as fast as Azure Front Door because of DNS caching
+  - *Azure App Gateway*
+    - Provides App Delivery Controller (ADP) services at L7
+    - It is used to optimize web farm traffic by offloading TLS/SSL termination to the gateway
+    - Works only within a region
+  - *Azure Load Balancer*
+    - L4
+    - Zone redundant
+    - Does not provide firewall features
+
+** Introduction to Azure App Gateway
+*** What is Azure App Gateway
+- L7 load balancer
+- Web firewall
+- TLS/SSL encryption
+- Load balances the traffic via roud-robin
+- Supports sticy sessions
+- HTTP, HTTPS, HTTP/2, WebSocket
+- Autoscaling
+- Connection draining allowing the removal of the backend instances during maintenance
+
+*** How Azure App Gateway works
+[[https://learn.microsoft.com/en-us/training/modules/intro-to-azure-application-gateway/images/application-gateway-components.png][Azure App Gateway]]
+
+- *Frontend IP*
+  - Only 1 public or private IP
+- *Listeners*
+  - >= 1 listener
+  - Forwards the incoming traffic to the backend pool based on the rules
+  - 2 types:
+    - *Basic*: works only on the URL path
+    - *Multi site*: can use the URL hostname
+  - Verify TLS/SSL certificates
+- *Routing rules*
+  - Binds a listener to the backend pool
+  - Can work with HTTP settings: if the traffic should be encrypted and how
+  - Protocol
+  - Session stickiness
+  - Connection draining
+  - Request timeout
+  - Health probes
+
+*** Load balancing in Azure App Gateway
+- L7
+- Round-robin
+- Uses hostname and path
+- Supports sticky sessions
+
+*** Web app firewall
+- WAF handles incoming requests before they reach the listeners
+- Based on Open Web Application Security Project (OWASP)
+- Common threats include: SQL injection, XSSF, command injection, HTTP smuggling, HTTP response splitting, remote file inclusion, bots, crawlers
+- OWASP defines a set of generic rules known as Core Rule Set (CRS)
+- WAF supports: CRS 3.2, 3.1 (default), 3.0, 2.2.9
+- Can be customized
+
+*** Backend pools
+- Each pool has an associated load balancer that distributes traffic
+- If TLS/SSL is used, the gateway re-encrypts the traffic when sending it to the pool
+- The followings need to be configured:
+  - The backend should accept only HTTPS
+  - The certificate to use to encrypt and authenticate
+- No need to configure certificates with Azure App Service
+
+*** App Gateway routing
+- 2 types:
+  - [[https://learn.microsoft.com/en-us/training/modules/intro-to-azure-application-gateway/images/path-based-routing.png][Path-based routing]]
+  - [[https://learn.microsoft.com/en-us/training/modules/intro-to-azure-application-gateway/images/multi-site-routing.png][Multi-site routing]]
+- Inludes:
+  - *Redirection*: to another site or from HTTP to HTTPS
+  - *Rewrite HTTP headers*
+  - *Custom error pages*
+
+*** TLS/SSL termination
+[[https://learn.microsoft.com/en-us/training/modules/intro-to-azure-application-gateway/images/tls-ssl-termination.png][TLS/SSL encryption]]
+
+- When the TLS/SSL connection is terminated, Azure App Gateway offloads the CPU intensive part from
+  the server
+- No need for certificates on the server
+- Azure App Gateway can dencrypt the traffic in the gateway with a private key and then reencrypts
+  to the server with a public key
+- Azure App Gateway can use multiple ports
+
+*** Health probes
+- If the response is in [200, 399] the connection is healthy
+- The gateway will use a default probe if not configured
+
+*** Autoscaling
+- 0 configs
+
+*** WebSocket and HTTP/2 traffic
+- Full duplex connection over a long living TCP connection
+- Work with HTTP port 80 and 443
+  
+** Introduction to Azure Network Watcher
+*** What is Azure Network Watcher
+[[https://learn.microsoft.com/en-us/training/modules/intro-to-azure-network-watcher/images/network-watcher-tools.png][Azure Network Watcher]]
+
+- A suite of tools to monitor, diagnose, view metrics, enable/disable logs for IaaS resources
+- Not intended for PaaS or web analytics
+- 3 major sets of capabilities:
+  - *Monitoring*
+    - Topology
+    - Connection monitoring
+  - *Network diagnostics*
+    - IP flow verify
+    - NSG diagnostics
+    - Next hop
+    - Effective security rules
+    - Connection troubleshooting
+    - Packet capture
+    - VPN troubleshooting
+  - *Traffic*
+    - Flow logs
+    - Traffic analytics
+
+*** Topology
+- Visualization of the entire network
+- Helps with visualizing the problems
+
+*** Connection monitoring
+- End-to-end connection monitoring for Azure and hybrid endpoints
+- Network performance accross different endpoints
+- Can verify if the connection between 2 resources works
+
+*** IP flow verify
+- Detects traffic filtering issues at VM level
+- It check if a packet is allowed or denied and the effective rule that denied it
+
+*** NSG diagnostics
+- Detects traffic filtering issues at VM, VM scale set and app gateway level
+- Allows adding a security rule with higher priority to allow or deny a packet
+
+*** Next hope
+- It checks if traffic is routed to the next destination
+
+*** Effective security rule
+- It shows all the security rules applied to a NIC, or subnet
+
+*** Connection troubleshooting
+- Test the connection between 2 resources
+
+*** Packet capture
+- Allows to remotely create packet capture sessions to record the traffic
+
+*** Flow logs
+- Logs the Azure IP traffic to Azure storage throug NSG or VNet
+
+*** Traffic analytics
+- Log visualiztion
+
+*** How Azure Network Watcher works
+[[https://learn.microsoft.com/en-us/training/modules/intro-to-azure-network-watcher/images/portal-search.png][Azure Network Watcher]]
+
+- Automatically created along side a VNet
+
+*** Topology tools
+- All toplogy resources have the following properties:
+  - *Name*
+  - *Id*: the resource URI
+  - *Location*
+  - *Associations*
+    - A list of associations to the referred object with the following properties:
+      - *AssociationType*: the relation between the child and parent (=Contains= or =Associated=)
+      - *Name*
+      - *ResourceId*
+
+*** Connection Monitor tool
+[[https://learn.microsoft.com/en-us/training/modules/intro-to-azure-network-watcher/images/connection-monitor-topology.png][Connection monitoring tool]]
+
+- Unified, end-to-end connection monitoring
+- Supports hybrid and cloud deployments
+- Can measure the latency
+- Can detect connection and NSG rule changes
+- Can probe VMs
+- An agent needs to be installed at host level
+
+*** IP flow verify
+- Uses 5 parameters:
+  - Local and remote port
+  - Protocol (TCP or UDP)
+  - Local and remote IP
+  - The VM
+  - The NIC
+
+*** Next hop
+- Returns the route table associated with the next hop (UDR or =System Route=)
+
+*** Packet capture
+- 5 filters:
+  - Protocol
+  - Local IP
+  - Remote IP
+  - Local port
+  - Remote port
+
+*** Connection troubleshooting
+- Checks the TCP connection between the endpoints
+- Destination VM can be specified with: FQDN, URI, IP
+- If success, it returns:
+  - The latency (ms)
+  - The number of probes
+  - The number of hops
+- If unsuccessful, returns one of the followings:
+  - *CPU*: it failed due to high CPU usage
+  - *Memorry*
+  - *GuestFirewall*: a firewall outside Azure blocked
+  - *DNSResolution*
+  - *NetworkSecurityRule*
+  - *UserDefinedRoute*: an incorrect route in the table
+
+*** VPN troubleshoot
+- The values returned from the API:
+  - *startTime*
+  - *endTime*
+  - *code*
+    - =UnHealthy= if there is a single diagnose failure
+  - *results*
+    - *id*: failure type
+    - *summary*
+    - *detailed*
+    - *recommendedActions*
+    - *actionText*
+    - *actionUri*: the documentation URI
+    - *actionUriText*
+
+*** When to use Azure Network Watcher
+[[https://learn.microsoft.com/en-us/training/modules/intro-to-azure-network-watcher/4-when-to-use-azure-network-watcher][Link]]
+
