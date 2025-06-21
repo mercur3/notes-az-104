@@ -1,0 +1,183 @@
+* Configure and manage virtual networks
+** Configure virtual networks
+*** Things to know about virtual networks
+[[https://learn.microsoft.com/en-us/training/wwl-azure/configure-virtual-networks/media/virtual-networks-c016972b.png][Virtual networks]]
+
+- An Azure virtual network is a logical isolation of a resource
+- They are used to provision and manage VPNs
+- Each virtual network has its own Classless Inter-Domain Routing (CIDR) block and can be linked to
+  other virtual networks and on-premise
+- You can control DNS settings for the virtual network and split it into subnets
+
+*** Things to consider when using virtual networks
+| Scenario                                   | Description                                            |
+|--------------------------------------------+--------------------------------------------------------|
+| Create a dedicated private cloud-only VNet |                                                        |
+| Extend the data center                     | Site-to-site VPN using IPSEC                           |
+| Hybrid cloud                               | Connect cloud resources with those deployed on-premise |
+
+*** Things to know about subnets
+[[https://learn.microsoft.com/en-us/training/wwl-azure/configure-virtual-networks/media/azure-subnets-a5c893d5.png][Subnets]]
+
+- Each subnet contains a range of IPs that fall into that subnet
+- The address range must be unique within the VNet
+- The ranges cannot overlap
+- The IP range must be specified by using CIDR notation
+
+*** Reserved addresses
+Example: =192.168.1.0/24=
+
+| Address                  | Reason              |
+|--------------------------+---------------------|
+| =192.168.1.0=              | The VNet address    |
+| =192.168.1.1=              | The default gateway |
+| =192.168.1.2=, =192.168.1.3= | Azure DNS           |
+| =192.168.1.255=            | Broadcast address   |
+
+*** Things to consider when using subnets
+- *Service requirements*
+  - A service might require its own subnet
+  - There needs to be enough unallocated range
+- *Network virtual appliances*
+  - Azure routes traffic between all the subnets in a VNet by default
+  - It can be disabled or can be configured so the traffic goes through a network virtual appliance
+- *Network security groups*
+  - Each subnet can have 0 or 1 network security groups
+- *Private links*
+  - Azure Private Links provides private connectivity from a VNet to a PaaS
+  - Eliminates data exposure to the internet
+
+*** Things to know about creating a VNet
+- You need to define the IP range
+- You an IP that is not in use
+  - The address space can be either in cloud or on-premise, but not both
+  - The address space cannot be changed
+- Define >= 1 subnets
+- Create the VNet
+
+*** Plan IP addressing
+[[https://learn.microsoft.com/en-us/training/wwl-azure/configure-virtual-networks/media/ip-addressing-54476e47.png][IP config]]
+
+- *Private IP*
+- *Public IP*
+
+*** Things to know about IP addresses
+- Can be assigned manually or dynamically
+- You can split manually and dynamically assigned IPs into different subnets
+- Static IPs do not change and are used for:
+  - DNS name resolution
+  - IP address-based security models
+  - TLS/SSL certificates
+  - Firewall rules
+  - Role-based VMs such as Domain Controllers and DNS
+
+*** Create public IP
+[[https://learn.microsoft.com/en-us/training/wwl-azure/configure-virtual-networks/media/create-public-ip-address-f07bd67d.png][Azure portal]]
+
+*** Things to consider when creating a public IP
+- *IP version*
+  - *IPv4*
+  - *IPv6*: the assignment must be dynamic for the basic SKU
+  - *Both*
+- *SKU*
+  - *Basic*
+  - *Standart*: the assignment must be manual
+  - Must be the same as the load balancer it is using
+- *Name*
+- *IP address assignment*
+  - *Dynamic*
+    - It is defined when used for the first time
+    - It can change if a VM is stopped/deallocated through assure, but stays the same if rebooted
+      from the OS
+    - When the IP address is removed, the dynamic address is released
+  - *Static*
+    - The address is assigned when the IP is created
+    - The address is released when the resource gets deleted
+    - If the address is not used, the assignment method can be changed
+    - The assignment cannot change if it is attached to a resource
+
+*** Associate public IPs
+[[https://learn.microsoft.com/en-us/training/modules/configure-virtual-networks/7-associate-public-ip-addresses][Link]]
+
+*** Allocate or assign private IP addresses
+[[https://learn.microsoft.com/en-us/training/modules/configure-virtual-networks/8-associate-private-ip-addresses][Link]]
+
+*** Exercise: create and configure VNets
+[[https://learn.microsoft.com/en-us/training/modules/configure-virtual-networks/9-simulation-create-networks][Link]]
+
+** Configure network security groups
+*** Implement network security groups
+- Networks secutity groups limit network traffic to a resource in a VNet
+
+*** Things to know about NSG
+- A NSG contains a list of rules that allow or deny inbound or outbound network traffic
+- Can be assigned to VNet or NIC
+- Can be assigned multiple times
+
+*** NSG and subnets
+- Protected screened subnet aka demilitarized zone (DMZ)
+- DMZ acts as a buffer between the resources and the internet
+- Network traffic is restricted
+- Each subnet can have 0 or 1 NSG
+
+*** NSG and NIC
+- 0 or 1 NSG for a NIC
+
+*** Things to know about security rules
+- Azure creates default security rules in a NSG for inbound and outbound traffic e.g.
+  =DenyAllInbound=, =AllowInterOutbound=
+- You can add more rules
+- The default rules cannot be removed or overridden
+
+| Setting           | Value                                                             |
+|-------------------+-------------------------------------------------------------------|
+| Source            | Any, IP address, Tag, NSG                                         |
+| Source port range |                                                                   |
+| Destination       | Any, IP address, Tag, NSG                                         |
+| Protocol          | TCP, UDP, Internet Control Message Protocol (ICMP), Any (default) |
+| Action            | Allow or Deny                                                     |
+| Priority          | A unique value [100, 4096] (lower number has higher priority)     |
+
+*** Inbound security rules
+[[https://learn.microsoft.com/en-us/training/wwl-azure/configure-network-security-groups/media/inbound-rules-a554314b.png][Default inbound rules]]
+
+- The default rules deny all inbound traffic except from the VNet or the load balancer
+
+*** Outbound security rules
+[[https://learn.microsoft.com/en-us/training/wwl-azure/configure-network-security-groups/media/outbound-rules-ff90d802.png][Default outbound rules]]
+
+- Only allow outbound traffic to the internet and the VNet
+
+*** Determine effective rules
+- *Inbound*: Azure processes the rules for subnet then for the NIC
+- *Outbound*: (reversed)
+- *Both*: Azure checks how to apply rules for intra-subnet traffic
+
+*** Things to consider when applying effective rules
+- *Consider allowing all traffic*
+- *Consider importance of allow rules*
+  - Firstly, define /allow/ rules for both subnet and NIC or the traffic is denied for any level
+    without an /allow/ rule
+- *Consider intra-subnet traffic*
+  - Network traffic between VMs in a subnet can be denied
+- *Consider rule priority*
+- [[https://learn.microsoft.com/en-us/training/wwl-azure/configure-network-security-groups/media/effective-security-rules-d93ab464.png][UI]]
+
+*** Create NSG rules
+[[https://learn.microsoft.com/en-us/training/modules/configure-network-security-groups/5-create-network-security-groups-rules][Link]]
+
+*** Implement application security groups
+[[https://learn.microsoft.com/en-us/training/modules/configure-network-security-groups/6-implement-asgs][Link]]
+
+- ASG: logical grouping of VMs based on the workload
+
+*** Exercise: implement virtual networking
+[[https://learn.microsoft.com/en-us/training/modules/configure-network-security-groups/7-simulation-create-network-groups][Link]]
+  
+** Host your domain on Azure DNS
+** Configure Azure Virtual Network peering
+** Manage and control traffic flow with routes
+** Introduction to Azure Load Balancer
+** Introduction to Azure App Gateway
+** Introduction to Azure Network Watcher
+
